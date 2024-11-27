@@ -5,15 +5,28 @@ import datetime, time
 # Made By Andres Candido 2024.
 # All Rigths Reserved.
 
-my_key = "PK6C08KRDG5YWQ1ZMCA3"
-my_secret_key = "rWfq0uedd1kB5vrFmbB2mCCQ9GMeoA4JYSDYbamX"
+#------------------------------ SETUP ------------------------------#
+
+my_key = "PKX9BESW83A25ZKN8E0G"
+my_secret_key = "gevvhYGI71oQd6W7mZ1QKoUU9dVL57CCQdsdPQ82"
 
 Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca
 
-symbol = "NVDA"
-#If day trading stocks, account needs to have at least $25000 at all times. If not, Pattern Day Trader (PDT) Protection will restrict account
+symbol = ["PLTR"]
+
+#If day trading stocks, account needs to have at least $25000 at all times. If not, Pattern Day Trader (PDT) Protection will restrict account.
+#Allowance is the money available for trade, if there are multiple stocks in the symbol list allowance will be divided equally.
 allowance = round(float(Trading_Client.get_account().buying_power) - 25000, 2)
 
+#Initialize variable lists:
+allowance = [round(allowance/len(symbol),2)] * len(symbol)
+Order_Is_Scheduled = [False] * len(symbol)
+BuyOrSell = ["LookingToSell"] * len(symbol)
+Buy_Order_id = [None] * len(symbol)
+Sell_Order_id = [None] * len(symbol)
+
+
+#------------------------------ MAIN LOOP ------------------------------#
 
 #Loop forever?
 while True:
@@ -26,53 +39,63 @@ while True:
         else:
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - A new day begins!")
 
-            #Execute first Buy of the day at market openning if position not already held
-            if (check_position(Trading_Client,symbol) == False):
-                buy_stock(Trading_Client, allowance, symbol)
-                HighestOrLowest_price = request_stock_price(my_key, my_secret_key, symbol)
-                openning_price = HighestOrLowest_price
-                write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - 1st Buy: Bought " + get_position_amount(Trading_Client,symbol) + " at " + str(HighestOrLowest_price) )
-            else:
-                HighestOrLowest_price = request_stock_price(my_key, my_secret_key, symbol)
-                openning_price = HighestOrLowest_price
-                write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - " + get_position_amount(Trading_Client,symbol) + " already in portfolio, current value per share: " + str(HighestOrLowest_price) )
-
-            BuyOrSell = "LookingToSell"
+            for i in range(len(symbol)):
+                #Execute first Buy (Market Order) of the day at market openning if position isn't already held.
+                if (check_position(Trading_Client,symbol[i]) == False):
+                    Buy_Order_id[i] = MarketOrder_buy_stock(Trading_Client, allowance[i], symbol[i])
+                    current_price = request_stock_price(my_key, my_secret_key, symbol[i])
+                    write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - 1st Buy: Bought " + get_position_amount(Trading_Client,symbol[i]) + " each at $" + str(current_price) )
+                else:
+                    current_price = request_stock_price(my_key, my_secret_key, symbol[i])
+                    write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - " + get_position_amount(Trading_Client,symbol[i]) + " already in portfolio, current value per share: $" + str(current_price) )
 
 
             #This loop runs until 5 minutes before the market closes for the day
             while (get_current_market_time(my_key, my_secret_key) < (get_market_closing_time(my_key, my_secret_key)-datetime.timedelta(minutes=5))):
 
-                current_price = request_stock_price(my_key, my_secret_key, symbol)
+                #Go over all stocks in symbol list 
+                for i in range(len(symbol)):
 
-                if (BuyOrSell == "LookingToSell"):
+                    current_price = request_stock_price(my_key, my_secret_key, symbol[i])
 
-                    if (current_price > HighestOrLowest_price):
-                        HighestOrLowest_price = current_price #Update new highest price
+                    if (BuyOrSell[i] == "LookingToSell"):
+
+                        if (check_order_status(my_key, my_secret_key, Buy_Order_id[i]) == "filled" and Order_Is_Scheduled[i] == False):
+                            # Schedule TrailingStopOrder to sell asset when Buy_Order is filled
+                            # TrailingStopOrder will sell assets if current price is 2% lower than highest price reached
+                            Sell_Order_id[i] = TrailingStopOrder_sell_stock(Trading_Client, current_price, allowance[i], symbol[i], 1)
+                            # Update Scheduled_Sell_Order to prevent scheduling multiple orders 
+                            Order_Is_Scheduled[i] = True
+
+                        elif (check_order_status(my_key, my_secret_key, Sell_Order_id[i]) == "filled"): 
+                            #If previous Sell has gone through write it to Log and update allowance amount
+                            write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Sold " + str(symbol[i]) + " at " + str(current_price) )
+                            allowance[i] = update_allowance(my_key, my_secret_key, Sell_Order_id[i]) # Update allowance
+                            
+                            # Reset Scheduled_Sell_Order and update BuyOrSell to change behavior 
+                            Order_Is_Scheduled[i] = False
+                            BuyOrSell[i] = "LookingToBuy"
                         
-                    elif (current_price <= (HighestOrLowest_price-(openning_price*0.002))): 
-                        #Sell if current price is 0.2% less than highest price reached
-                        TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
-                        write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Sold all " + str(symbol) + " at " + str(current_price) )
-                        allowance = round(float(Trading_Client.get_account().buying_power) - 25000, 2) #Update allowance for snowball potential
 
-                        BuyOrSell = "LookingToBuy"
-                        HighestOrLowest_price = current_price #Store price at selling time
-                    
-                elif (BuyOrSell == "LookingToBuy"):
+                    elif (BuyOrSell[i] == "LookingToBuy"):
 
-                    if (current_price < HighestOrLowest_price):
-                        HighestOrLowest_price = current_price #Update new lowest price
+                        if (check_order_status(my_key, my_secret_key, Sell_Order_id[i]) == "filled" and Order_Is_Scheduled[i] == False):
+                            # Schedule TrailingStopOrder to Buy asset when Sell_Order is filled
+                            # TrailingStopOrder will buy assets if current price is 1% higher than lowest price reached
+                            Buy_Order_id[i] = TrailingStopOrder_buy_stock(Trading_Client, current_price, allowance[i], symbol[i], 0.5)
+                            # Update Scheduled_Buy_Order to prevent scheduling multiple orders 
+                            Order_Is_Scheduled[i] = True
 
-                    elif (current_price >= (HighestOrLowest_price+(openning_price*0.002))):
-                        #Buy if current price is 0.2% more than lowest price reached
-                        buy_stock(Trading_Client, allowance, symbol)
-                        write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Bought " + get_position_amount(Trading_Client,symbol) + " at " + str(current_price) )
+                        elif (check_order_status(my_key, my_secret_key, Buy_Order_id[i]) == "filled"):
+                            #If previous Buy_Order has gone through write it to Log 
+                            write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Bought " + get_position_amount(Trading_Client,symbol[i]) + " at " + str(current_price) )
+                            
+                            # Reset Scheduled_Buy_Order and update BuyOrSell to change behavior 
+                            Order_Is_Scheduled[i] = False
+                            BuyOrSell[i] = "LookingToSell"
 
-                        BuyOrSell = "LookingToSell"
-                        HighestOrLowest_price = current_price #Store price at selling time
-
-                time.sleep(60)  # Sleep for 1 minute(s) (60 seconds) then check price again, repeat until market closes
+                time.sleep(60)  # Sleep for 1 minute(s) (60 seconds) then check if current TrailingStopOrder has gone through, repeat until market closes
+                #print(allowance,Order_Is_Scheduled,BuyOrSell,Buy_Order_id,Sell_Order_id)
 
             #Send End Of Day Report to email
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - End of the day, sending report")
@@ -80,7 +103,7 @@ while True:
 
     except requests.ConnectionError as e:
         if ( check_internet_connection()==False ):
-            write_to_log("ERROR: -------------> Internet connection lost. Retrying...")
+            write_to_log("ERROR: -------------> Internet connection lost. Waiting to reboot...")
         else:
             write_to_log(f"ERROR: -------------> Internet connection OK, something else went wrong. Retrying...\nError message: {e}")
         

@@ -1,7 +1,7 @@
 import requests
 import datetime
-from alpaca.trading.requests import MarketOrderRequest
-from alpaca.trading.enums import OrderSide, OrderType, TimeInForce
+from alpaca.trading.requests import MarketOrderRequest, TrailingStopOrderRequest
+from alpaca.trading.enums import OrderSide, TimeInForce
 
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -102,18 +102,94 @@ def get_position_amount(Trading_Client, symbol):
     else:
         return "Position not found"       
 
-def buy_stock(Trading_Client, amount, symbol):
+def MarketOrder_buy_stock(Trading_Client, notional_amount, symbol):
     
     market_order_data = MarketOrderRequest(
         symbol = symbol,
-        notional = amount,
+        notional = notional_amount,
         side = OrderSide.BUY,
         time_in_force = TimeInForce.DAY
     )
 
     market_order = Trading_Client.submit_order(market_order_data)
-    #print(market_order)
+    return(market_order.id)
 
+def TrailingStopOrder_buy_stock(Trading_Client, current_price, notional_amount, symbol, percent):
+
+    qty_amount = notional_amount // current_price #The // operator performs floor division, which rounds down the result to the nearest integer.
+
+    TS_order_data = TrailingStopOrderRequest(
+        symbol = symbol,
+        qty = qty_amount,
+        side = OrderSide.BUY,
+        time_in_force = TimeInForce.GTC,
+        trail_percent = percent
+    )
+
+    TS_order = Trading_Client.submit_order(TS_order_data)
+    return(TS_order.id)
+
+def TrailingStopOrder_sell_stock(Trading_Client, current_price, notional_amount, symbol, percent):
+
+    qty_amount = notional_amount // current_price #The // operator performs floor division, which rounds down the result to the nearest integer.
+
+    TS_order_data = TrailingStopOrderRequest(
+        symbol = symbol,
+        qty = qty_amount,
+        side = OrderSide.SELL,
+        time_in_force = TimeInForce.GTC,
+        trail_percent = percent
+    )
+
+    TS_order = Trading_Client.submit_order(TS_order_data)
+    return(TS_order.id)
+
+def check_order_status(my_key, my_secret_key, order_id):
+    url = "https://paper-api.alpaca.markets/v2/orders/" + str(order_id)
+
+    headers = {
+        "accept": "application/json",
+        "APCA-API-KEY-ID": my_key,
+        "APCA-API-SECRET-KEY": my_secret_key
+    }
+
+    response = requests.get(url, headers=headers)
+    response = response.text
+
+    # Find the "status" key and extract its value
+    start_index = response.find('"status":') + len('"status":')
+    end_index = response.find(',', start_index)
+
+    # Strip unwanted characters like quotes and whitespace
+    status = response[start_index:end_index].strip().strip('"')
+
+    return(status)
+
+def update_allowance(my_key, my_secret_key, order_id):
+    url = "https://paper-api.alpaca.markets/v2/orders/" + str(order_id)
+
+    headers = {
+        "accept": "application/json",
+        "APCA-API-KEY-ID": my_key,
+        "APCA-API-SECRET-KEY": my_secret_key
+    }
+
+    response = requests.get(url, headers=headers)
+    response = response.text
+
+    # Find the "filled_qty" and "filled_avg_price" key and extract their values
+    qty_start_index = response.find('"filled_qty":') + len('"filled_qty":')
+    qty_end_index = response.find(',', qty_start_index)
+
+    price_start_index = response.find('"filled_avg_price":') + len('"filled_avg_price":')
+    price_end_index = response.find(',', price_start_index)
+
+    # Strip unwanted characters like quotes and whitespace
+    qty = float(response[qty_start_index:qty_end_index].strip().strip('"'))
+    price = float(response[price_start_index:price_end_index].strip().strip('"'))
+
+    return(round(qty * price,2))
+    
 def buy_crypto(Trading_Client, amount, symbol):
     
     market_order_data = MarketOrderRequest(
