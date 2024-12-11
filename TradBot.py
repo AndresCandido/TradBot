@@ -10,9 +10,12 @@ import datetime, time
 my_key = "PKX9BESW83A25ZKN8E0G"
 my_secret_key = "gevvhYGI71oQd6W7mZ1QKoUU9dVL57CCQdsdPQ82"
 
-Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca
+Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca, set paper=false if trading with real money
 
 symbol = ["PLTR"]
+
+TSO_Sell = 1  # TrailingStopOrder will sell assets if current price is (TSO_Sell)% lower than highest price reached
+TSO_Buy = 1   # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
 
 #If day trading stocks, account needs to have at least $25000 at all times. If not, Pattern Day Trader (PDT) Protection will restrict account.
 #Allowance is the money available for trade, if there are multiple stocks in the symbol list allowance will be divided equally.
@@ -40,14 +43,14 @@ while True:
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - A new day begins!")
 
             for i in range(len(symbol)):
-                #Execute first Buy (Market Order) of the day at market openning if position isn't already held.
-                if (check_position(Trading_Client,symbol[i]) == False):
+                #Execute first Buy (Market Order) of the day at market openning if position isn't already held OR if position is held but is less than 1 share.
+                if (check_position(Trading_Client,symbol[i]) == False or (check_position(Trading_Client,symbol[i]) == True and float(get_position_amount(Trading_Client,symbol[i])) < 1.00)):
                     Buy_Order_id[i] = MarketOrder_buy_stock(Trading_Client, allowance[i], symbol[i])
                     current_price = request_stock_price(my_key, my_secret_key, symbol[i])
-                    write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - 1st Buy: Bought " + get_position_amount(Trading_Client,symbol[i]) + " each at $" + str(current_price) )
+                    write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - 1st Buy: Bought " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " each at $" + str(current_price) )
                 else:
                     current_price = request_stock_price(my_key, my_secret_key, symbol[i])
-                    write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - " + get_position_amount(Trading_Client,symbol[i]) + " already in portfolio, current value per share: $" + str(current_price) )
+                    write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " already in portfolio, current value per share: $" + str(current_price) )
 
 
             #This loop runs until 5 minutes before the market closes for the day
@@ -62,8 +65,8 @@ while True:
 
                         if (check_order_status(my_key, my_secret_key, Buy_Order_id[i]) == "filled" and Order_Is_Scheduled[i] == False):
                             # Schedule TrailingStopOrder to sell asset when Buy_Order is filled
-                            # TrailingStopOrder will sell assets if current price is 2% lower than highest price reached
-                            Sell_Order_id[i] = TrailingStopOrder_sell_stock(Trading_Client, current_price, allowance[i], symbol[i], 1)
+                            # TrailingStopOrder will sell assets if current price is (TSO_Sell)% lower than highest price reached
+                            Sell_Order_id[i] = TrailingStopOrder_sell_stock(Trading_Client, current_price, allowance[i], symbol[i], TSO_Sell)
                             # Update Scheduled_Sell_Order to prevent scheduling multiple orders 
                             Order_Is_Scheduled[i] = True
 
@@ -81,14 +84,14 @@ while True:
 
                         if (check_order_status(my_key, my_secret_key, Sell_Order_id[i]) == "filled" and Order_Is_Scheduled[i] == False):
                             # Schedule TrailingStopOrder to Buy asset when Sell_Order is filled
-                            # TrailingStopOrder will buy assets if current price is 1% higher than lowest price reached
-                            Buy_Order_id[i] = TrailingStopOrder_buy_stock(Trading_Client, current_price, allowance[i], symbol[i], 0.5)
+                            # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
+                            Buy_Order_id[i] = TrailingStopOrder_buy_stock(Trading_Client, current_price, allowance[i], symbol[i], TSO_Buy)
                             # Update Scheduled_Buy_Order to prevent scheduling multiple orders 
                             Order_Is_Scheduled[i] = True
 
                         elif (check_order_status(my_key, my_secret_key, Buy_Order_id[i]) == "filled"):
                             #If previous Buy_Order has gone through write it to Log 
-                            write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Bought " + get_position_amount(Trading_Client,symbol[i]) + " at " + str(current_price) )
+                            write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Bought " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " at " + str(current_price) )
                             
                             # Reset Scheduled_Buy_Order and update BuyOrSell to change behavior 
                             Order_Is_Scheduled[i] = False

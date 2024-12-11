@@ -95,7 +95,7 @@ def get_position_amount(Trading_Client, symbol):
     for position in portfolio:
         if (position.symbol == symbol):
             found = True
-            amount = "{} shares of {}".format(position.qty, position.symbol)
+            amount = position.qty
 
     if(found == True):
         return amount

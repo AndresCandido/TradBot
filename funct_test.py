@@ -9,17 +9,25 @@ symbol = "PLTR"
 
 Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca
 
-#End_of_Day_Report(Trading_Client, "tradbot001@gmail.com", "lyrebwuypwlwzzvu", "andrescandido2000@gmail.com")
 
-TradingClient.cancel_orders(self=Trading_Client)
+#TradingClient.cancel_orders(self=Trading_Client)
 
-TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
+#TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
 
-clear_log()
+#clear_log()
 
-#print(str(get_current_market_time(my_key, my_secret_key)) + " - 1st Buy: Bought " + get_position_amount(Trading_Client,symbol) + " at 100" )
+if (check_position(Trading_Client,symbol) == False or (check_position(Trading_Client,symbol) == True and float(get_position_amount(Trading_Client,symbol)) < 1.00)):
+    print(get_position_amount(Trading_Client,symbol))
+else:
+    print("peener")
+
+print(check_position(Trading_Client,symbol))
+
+print(get_position_amount(Trading_Client,symbol))
 
 print(check_internet_connection())
+
+#End_of_Day_Report(Trading_Client, "tradbot001@gmail.com", "lyrebwuypwlwzzvu", "andrescandido2000@gmail.com")
 
 #print(update_allowance(my_key, my_secret_key, "ef983233-9430-4768-b732-4f7f9e8a7054"))
 
