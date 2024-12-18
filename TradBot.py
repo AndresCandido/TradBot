@@ -7,15 +7,15 @@ import datetime, time
 
 #------------------------------ SETUP ------------------------------#
 
-my_key = "PKX9BESW83A25ZKN8E0G"
-my_secret_key = "gevvhYGI71oQd6W7mZ1QKoUU9dVL57CCQdsdPQ82"
+my_key = "PKYQD3XECSF0T2SHPVS0"
+my_secret_key = "PJbDMuORm6ct0m2YxaxjHCgZsMmTdorCc6Oa1gMJ"
 
 Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca, set paper=false if trading with real money
 
 symbol = ["PLTR"]
 
-TSO_Sell = 1  # TrailingStopOrder will sell assets if current price is (TSO_Sell)% lower than highest price reached
-TSO_Buy = 1   # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
+TSO_Sell = 0.5 # TrailingStopOrder will sell assets if current price is (TSO_Sell)% lower than highest price reached
+TSO_Buy = 0.75 # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
 
 #If day trading stocks, account needs to have at least $25000 at all times. If not, Pattern Day Trader (PDT) Protection will restrict account.
 #Allowance is the money available for trade, if there are multiple stocks in the symbol list allowance will be divided equally.

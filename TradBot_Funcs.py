@@ -131,7 +131,8 @@ def TrailingStopOrder_buy_stock(Trading_Client, current_price, notional_amount, 
 
 def TrailingStopOrder_sell_stock(Trading_Client, current_price, notional_amount, symbol, percent):
 
-    qty_amount = notional_amount // current_price #The // operator performs floor division, which rounds down the result to the nearest integer.
+    #qty_amount = notional_amount // current_price # alternative qty_amount operation if we do not want to sell all
+    qty_amount = float(get_position_amount(Trading_Client,symbol)) // 1 #The // operator performs floor division, which rounds down the result to the nearest integer.
 
     TS_order_data = TrailingStopOrderRequest(
         symbol = symbol,

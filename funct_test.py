@@ -2,8 +2,8 @@ from alpaca.trading.client import TradingClient
 from TradBot_Funcs import *
 import datetime
 
-my_key = "PKX9BESW83A25ZKN8E0G"
-my_secret_key = "gevvhYGI71oQd6W7mZ1QKoUU9dVL57CCQdsdPQ82"
+my_key = "PKYQD3XECSF0T2SHPVS0"
+my_secret_key = "PJbDMuORm6ct0m2YxaxjHCgZsMmTdorCc6Oa1gMJ"
 
 symbol = "PLTR"
 
@@ -16,14 +16,9 @@ Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Al
 
 #clear_log()
 
-if (check_position(Trading_Client,symbol) == False or (check_position(Trading_Client,symbol) == True and float(get_position_amount(Trading_Client,symbol)) < 1.00)):
-    print(get_position_amount(Trading_Client,symbol))
-else:
-    print("peener")
+#print(check_position(Trading_Client,symbol))
 
-print(check_position(Trading_Client,symbol))
-
-print(get_position_amount(Trading_Client,symbol))
+print(float(get_position_amount(Trading_Client,symbol)) // 1)
 
 print(check_internet_connection())
 
