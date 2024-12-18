@@ -43,8 +43,8 @@ while True:
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - A new day begins!")
 
             for i in range(len(symbol)):
-                #Execute first Buy (Market Order) of the day at market openning if position isn't already held OR if position is held but is less than 1 share.
-                if (check_position(Trading_Client,symbol[i]) == False or (check_position(Trading_Client,symbol[i]) == True and float(get_position_amount(Trading_Client,symbol[i])) < 1.00)):
+                #Execute first Buy (Market Order) of the day at market openning if ( (position isn't already held) OR (position is held but is less than 1 share) ) AND (a TSO_BUY order isn't already scheduled).
+                if ( (check_position(Trading_Client,symbol[i]) == False or ( (check_position(Trading_Client,symbol[i]) == True and float(get_position_amount(Trading_Client,symbol[i])) < 1.00))) and (Order_Is_Scheduled[i] == False) ):
                     Buy_Order_id[i] = MarketOrder_buy_stock(Trading_Client, allowance[i], symbol[i])
                     current_price = request_stock_price(my_key, my_secret_key, symbol[i])
                     write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - 1st Buy: Bought " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " each at $" + str(current_price) )
