@@ -10,9 +10,9 @@ import datetime, time
 my_key = "PKYQD3XECSF0T2SHPVS0"
 my_secret_key = "PJbDMuORm6ct0m2YxaxjHCgZsMmTdorCc6Oa1gMJ"
 
-Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca, set paper=false if trading with real money
+Trading_Client = TradingClient(my_key, my_secret_key, paper=True) # Log into Alpaca, set paper=false if trading with real money
 
-symbol = ["PLTR"]
+symbol = ["PLTR"] 
 
 TSO_Sell = 0.5 # TrailingStopOrder will sell assets if current price is (TSO_Sell)% lower than highest price reached
 TSO_Buy = 0.75 # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
@@ -23,6 +23,7 @@ allowance = round(float(Trading_Client.get_account().buying_power) - 25000, 2)
 
 #Initialize variable lists:
 allowance = [round(allowance/len(symbol),2)] * len(symbol)
+leftover_allowance = [0.0] * len(symbol)
 Order_Is_Scheduled = [False] * len(symbol)
 BuyOrSell = ["LookingToSell"] * len(symbol)
 Buy_Order_id = [None] * len(symbol)
@@ -73,7 +74,7 @@ while True:
                         elif (check_order_status(my_key, my_secret_key, Sell_Order_id[i]) == "filled"): 
                             #If previous Sell has gone through write it to Log and update allowance amount
                             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Sold " + str(symbol[i]) + " at " + str(current_price) )
-                            allowance[i] = update_allowance(my_key, my_secret_key, Sell_Order_id[i]) # Update allowance
+                            allowance[i] = update_allowance(my_key, my_secret_key, Sell_Order_id[i], leftover_allowance[i]) # Update allowance
                             
                             # Reset Scheduled_Sell_Order and update BuyOrSell to change behavior 
                             Order_Is_Scheduled[i] = False
@@ -92,6 +93,10 @@ while True:
                         elif (check_order_status(my_key, my_secret_key, Buy_Order_id[i]) == "filled"):
                             #If previous Buy_Order has gone through write it to Log 
                             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Bought " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " at " + str(current_price) )
+
+                            #Get the amount of leftover allowance (allowance - money used in buy order), we will use this value in the update_allowance function 
+                            leftover_allowance[i] = get_leftover(my_key, my_secret_key, Buy_Order_id[i], allowance[i])
+                            print("Leftover allowance:" + leftover_allowance[i]) #testing
                             
                             # Reset Scheduled_Buy_Order and update BuyOrSell to change behavior 
                             Order_Is_Scheduled[i] = False

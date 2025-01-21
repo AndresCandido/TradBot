@@ -166,7 +166,7 @@ def check_order_status(my_key, my_secret_key, order_id):
 
     return(status)
 
-def update_allowance(my_key, my_secret_key, order_id):
+def get_leftover(my_key, my_secret_key, order_id, allowance):
     url = "https://paper-api.alpaca.markets/v2/orders/" + str(order_id)
 
     headers = {
@@ -189,7 +189,35 @@ def update_allowance(my_key, my_secret_key, order_id):
     qty = float(response[qty_start_index:qty_end_index].strip().strip('"'))
     price = float(response[price_start_index:price_end_index].strip().strip('"'))
 
-    return(round(qty * price,2))
+    return(allowance - round(qty * price,2))
+
+
+
+def update_allowance(my_key, my_secret_key, order_id, leftover_allowance):
+    url = "https://paper-api.alpaca.markets/v2/orders/" + str(order_id)
+
+    headers = {
+        "accept": "application/json",
+        "APCA-API-KEY-ID": my_key,
+        "APCA-API-SECRET-KEY": my_secret_key
+    }
+
+    response = requests.get(url, headers=headers)
+    response = response.text
+
+    # Find the "filled_qty" and "filled_avg_price" key and extract their values
+    qty_start_index = response.find('"filled_qty":') + len('"filled_qty":')
+    qty_end_index = response.find(',', qty_start_index)
+
+    price_start_index = response.find('"filled_avg_price":') + len('"filled_avg_price":')
+    price_end_index = response.find(',', price_start_index)
+
+    # Strip unwanted characters like quotes and whitespace
+    qty = float(response[qty_start_index:qty_end_index].strip().strip('"'))
+    price = float(response[price_start_index:price_end_index].strip().strip('"'))
+
+    #Add lasts order's total value to the leftover allowance to get new allowance amount
+    return(leftover_allowance + round(qty * price,2))
     
 def buy_crypto(Trading_Client, amount, symbol):
     
