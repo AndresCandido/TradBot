@@ -2,15 +2,14 @@ from alpaca.trading.client import TradingClient
 from TradBot_Funcs import *
 import datetime
 
-my_key = "PKYQD3XECSF0T2SHPVS0"
-my_secret_key = "PJbDMuORm6ct0m2YxaxjHCgZsMmTdorCc6Oa1gMJ"
+my_key = "PKPERS64VRHK701Q4NBX"
+my_secret_key = "hb2V3RP2ipZSlMlyOjyhB0bzBWkHymqY3jD2OvkL"
 
 symbol = "PLTR"
 
 Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca
 
-
-#TradingClient.cancel_orders(self=Trading_Client)
+TradingClient.cancel_orders(self=Trading_Client)
 
 #TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
 

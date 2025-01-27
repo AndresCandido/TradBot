@@ -7,12 +7,12 @@ import datetime, time
 
 #------------------------------ SETUP ------------------------------#
 
-my_key = "PKYQD3XECSF0T2SHPVS0"
-my_secret_key = "PJbDMuORm6ct0m2YxaxjHCgZsMmTdorCc6Oa1gMJ"
+my_key = "PKPERS64VRHK701Q4NBX"
+my_secret_key = "hb2V3RP2ipZSlMlyOjyhB0bzBWkHymqY3jD2OvkL"
 
 Trading_Client = TradingClient(my_key, my_secret_key, paper=True) # Log into Alpaca, set paper=false if trading with real money
 
-symbol = ["PLTR"] 
+symbol = ["PLTR"]
 
 TSO_Sell = 0.5 # TrailingStopOrder will sell assets if current price is (TSO_Sell)% lower than highest price reached
 TSO_Buy = 0.75 # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
@@ -96,15 +96,22 @@ while True:
 
                             #Get the amount of leftover allowance (allowance - money used in buy order), we will use this value in the update_allowance function 
                             leftover_allowance[i] = get_leftover(my_key, my_secret_key, Buy_Order_id[i], allowance[i])
-                            print("Leftover allowance:" + leftover_allowance[i]) #testing
+                            print("Leftover allowance:" + str(leftover_allowance[i])) #testing
                             
                             # Reset Scheduled_Buy_Order and update BuyOrSell to change behavior 
                             Order_Is_Scheduled[i] = False
                             BuyOrSell[i] = "LookingToSell"
 
                 time.sleep(60)  # Sleep for 1 minute(s) (60 seconds) then check if current TrailingStopOrder has gone through, repeat until market closes
-                #print(allowance,Order_Is_Scheduled,BuyOrSell,Buy_Order_id,Sell_Order_id)
 
+            #Before finishing the day, sell all assets & cancel all pending orders. This is to prevent being affected by price changes that may occur during off hours.
+            write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Getting ready to end the day. Selling all assets & canceling all pending orders.")
+            TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
+            TradingClient.cancel_orders(self=Trading_Client) #Cancel all orders
+            # Reset all Scheduled_Order_status
+            for i in range(len(symbol)):
+                Order_Is_Scheduled[i] = False
+            
             #Send End Of Day Report to email
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - End of the day, sending report")
             End_of_Day_Report(Trading_Client, "tradbot001@gmail.com", "lyrebwuypwlwzzvu", "andrescandido2000@gmail.com")
