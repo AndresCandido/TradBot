@@ -103,6 +103,8 @@ def get_position_amount(Trading_Client, symbol):
         return "Position not found"       
 
 def MarketOrder_buy_stock(Trading_Client, notional_amount, symbol):
+
+    notional_amount = round(float(notional_amount),2)
     
     market_order_data = MarketOrderRequest(
         symbol = symbol,
@@ -166,7 +168,7 @@ def check_order_status(my_key, my_secret_key, order_id):
 
     return(status)
 
-def get_leftover(my_key, my_secret_key, order_id, allowance):
+def get_leftover_allowance(my_key, my_secret_key, order_id, allowance):
     url = "https://paper-api.alpaca.markets/v2/orders/" + str(order_id)
 
     headers = {
@@ -190,8 +192,6 @@ def get_leftover(my_key, my_secret_key, order_id, allowance):
     price = float(response[price_start_index:price_end_index].strip().strip('"'))
 
     return(allowance - round(qty * price,2))
-
-
 
 def update_allowance(my_key, my_secret_key, order_id, leftover_allowance):
     url = "https://paper-api.alpaca.markets/v2/orders/" + str(order_id)

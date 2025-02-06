@@ -9,7 +9,7 @@ symbol = "PLTR"
 
 Trading_Client = TradingClient(my_key, my_secret_key, paper=True) ## Log into Alpaca
 
-TradingClient.cancel_orders(self=Trading_Client)
+#TradingClient.cancel_orders(self=Trading_Client)
 
 #TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
 
@@ -17,7 +17,7 @@ TradingClient.cancel_orders(self=Trading_Client)
 
 #print(check_position(Trading_Client,symbol))
 
-print(float(get_position_amount(Trading_Client,symbol)) // 1)
+#print(float(get_position_amount(Trading_Client,symbol)) // 1)
 
 print(check_internet_connection())
 

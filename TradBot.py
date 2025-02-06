@@ -15,7 +15,7 @@ Trading_Client = TradingClient(my_key, my_secret_key, paper=True) # Log into Alp
 symbol = ["PLTR"]
 
 TSO_Sell = 0.5 # TrailingStopOrder will sell assets if current price is (TSO_Sell)% lower than highest price reached
-TSO_Buy = 0.75 # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
+TSO_Buy = 0.25 # TrailingStopOrder will buy assets if current price is (TSO_Buy)% higher than lowest price reached
 
 #If day trading stocks, account needs to have at least $25000 at all times. If not, Pattern Day Trader (PDT) Protection will restrict account.
 #Allowance is the money available for trade, if there are multiple stocks in the symbol list allowance will be divided equally.
@@ -35,8 +35,8 @@ Sell_Order_id = [None] * len(symbol)
 #Loop forever?
 while True:
     try:
-        #Check calendar, if market does not open today sleep until next market open. Also sleep if market did open today but has already closed (we end our day 5 mins before closing time)
-        if( (check_calendar(my_key, my_secret_key, datetime.date.today()) == False) or ( (check_calendar(my_key, my_secret_key, datetime.date.today()) == True) and (get_current_market_time(my_key, my_secret_key) >= (get_market_closing_time(my_key, my_secret_key)-datetime.timedelta(minutes=5))))):
+        #Check calendar, if market does not open today sleep until next market open. Also sleep if market did open today but has already closed (we end our day 15 mins before closing time)
+        if( (check_calendar(my_key, my_secret_key, datetime.date.today()) == False) or ( (check_calendar(my_key, my_secret_key, datetime.date.today()) == True) and (get_current_market_time(my_key, my_secret_key) >= (get_market_closing_time(my_key, my_secret_key)-datetime.timedelta(minutes=15))))):
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Sleeping until market opens...")
             time.sleep(time_until_open(my_key, my_secret_key))
 
@@ -48,14 +48,16 @@ while True:
                 if ( (check_position(Trading_Client,symbol[i]) == False or ( (check_position(Trading_Client,symbol[i]) == True and float(get_position_amount(Trading_Client,symbol[i])) < 1.00))) and (Order_Is_Scheduled[i] == False) ):
                     Buy_Order_id[i] = MarketOrder_buy_stock(Trading_Client, allowance[i], symbol[i])
                     current_price = request_stock_price(my_key, my_secret_key, symbol[i])
+                    while check_order_status(my_key, my_secret_key, Buy_Order_id[i]) != "filled": # Buffer until order is filled
+                        time.sleep(1) # Sleep for 1 second(s), repeat until order is filled
                     write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - 1st Buy: Bought " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " each at $" + str(current_price) )
                 else:
                     current_price = request_stock_price(my_key, my_secret_key, symbol[i])
                     write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " already in portfolio, current value per share: $" + str(current_price) )
 
 
-            #This loop runs until 5 minutes before the market closes for the day
-            while (get_current_market_time(my_key, my_secret_key) < (get_market_closing_time(my_key, my_secret_key)-datetime.timedelta(minutes=5))):
+            #This loop runs until 15 minutes before the market closes for the day
+            while (get_current_market_time(my_key, my_secret_key) < (get_market_closing_time(my_key, my_secret_key)-datetime.timedelta(minutes=15))):
 
                 #Go over all stocks in symbol list 
                 for i in range(len(symbol)):
@@ -95,7 +97,7 @@ while True:
                             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Bought " + get_position_amount(Trading_Client,symbol[i]) + " shares of " + symbol[i] + " at " + str(current_price) )
 
                             #Get the amount of leftover allowance (allowance - money used in buy order), we will use this value in the update_allowance function 
-                            leftover_allowance[i] = get_leftover(my_key, my_secret_key, Buy_Order_id[i], allowance[i])
+                            leftover_allowance[i] = get_leftover_allowance(my_key, my_secret_key, Buy_Order_id[i], allowance[i])
                             print("Leftover allowance:" + str(leftover_allowance[i])) #testing
                             
                             # Reset Scheduled_Buy_Order and update BuyOrSell to change behavior 
@@ -106,11 +108,12 @@ while True:
 
             #Before finishing the day, sell all assets & cancel all pending orders. This is to prevent being affected by price changes that may occur during off hours.
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - Getting ready to end the day. Selling all assets & canceling all pending orders.")
-            TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
             TradingClient.cancel_orders(self=Trading_Client) #Cancel all orders
-            # Reset all Scheduled_Order_status
+            TradingClient.close_all_positions(self=Trading_Client) #Sell all assets
+            # Reset all Scheduled_Order_status and update BuyOrSell to change behavior
             for i in range(len(symbol)):
                 Order_Is_Scheduled[i] = False
+                BuyOrSell[i] = "LookingToSell"
             
             #Send End Of Day Report to email
             write_to_log( str(get_current_market_time(my_key, my_secret_key)) + " - End of the day, sending report")
