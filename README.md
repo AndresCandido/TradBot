@@ -1,6 +1,6 @@
 # TradBot
 
-TradBot is an automated stock trading bot designed for the Alpaca Trading API. It enables hands-off management of stock trades, executing buy and sell orders based on configurable strategies and market conditions. Written in Python, TradBot is suitable for both paper trading and live accounts.
+TradBot is an automated stock trading bot designed for the Alpaca Trading API. It enables hands-off management of stock trades, executing buy and sell orders based on configurable strategies and market conditions. Written in Python, TradBot is suitable for both paper trading and live accounts in the New York Stock Exchange (NYSE).
 
 ## Features
 
